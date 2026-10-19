@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f7"><meta name="csrf-token" content="{{ csrf }}">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/static/app.css">
+  <title>{{ 'Register your facility' if onboarding else 'Welcome back' }} · Inventory</title><script src="/static/auth.js" defer></script>
+</head><body class="auth-body" data-onboarding="{{ 'true' if onboarding else 'false' }}">
+  <header class="auth-top"><a href="/demo" class="wordmark"><span class="brand-mark"><span></span></span><span>Inventory</span></a><a href="/demo" class="text-link">Explore the demo <span aria-hidden="true">↗</span></a></header>
+  <main class="auth-layout">
+    <section class="auth-editorial"><span class="eyebrow">A PLACE FOR EVERY ESSENTIAL</span><h1>A little order.<br>A lot of care.</h1><p>Keep your medicines, supplies, and daily stock movements in one considered workspace.</p>
+      <div class="auth-illustration" aria-hidden="true"><div class="illustration-label"><span class="sync-dot"></span>Everything in its place.</div><div class="shelf"><div class="medicine-carton"><span>Paracetamol</span><small>500 mg</small><i></i><b>TABLETS</b></div><div class="bottle"><div class="bottle-cap"></div><div class="bottle-body"><span>70%</span><small>ALCOHOL</small></div></div><div class="supply-carton"><span>STERILE<br>GAUZE</span><small>4 × 4 in</small><i>+</i></div></div><div class="shelf-base"></div></div>
+      <div class="editorial-foot"><span>One facility. One clear view.</span><span>Built around your day.</span></div>
+    </section>
+    <section class="auth-panel"><div class="auth-form-wrap">
+      <span class="auth-step">{{ 'YOUR NEW WORKSPACE' if onboarding else 'FACILITY WORKSPACE' }}</span>
+      <h2 id="auth-title">{{ 'Make it yours.' if onboarding else 'Welcome back.' }}</h2><p class="auth-description" id="auth-description">{{ 'Register your facility to start organizing your inventory.' if onboarding else 'Sign in to pick up where you left off.' }}</p>
+      {% if not onboarding %}<div class="segmented auth-tabs"><button class="active" data-mode="login">Sign in</button><button data-mode="register">Create account</button></div>{% endif %}
+      <form id="auth-form" novalidate>
+        {% if onboarding %}<label>Facility name<input name="name" placeholder="e.g. San Isidro Health Center" maxlength="200" required autocomplete="organization"></label><div class="inline-note"><svg class="icon" aria-hidden="true"><use href="/static/icons.svg#shield"></use></svg><span>You'll be the facility administrator. Your inventory is private to your team.</span></div>
+        {% else %}<label id="name-field" hidden>Your name<input name="name" placeholder="Full name" maxlength="120" autocomplete="name"></label><label>Email address<input name="email" type="email" placeholder="you@healthcenter.ph" autocomplete="email" required></label><label>Password<span class="password-wrap"><input name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required><button type="button" id="show-password">Show</button></span></label>{% endif %}
+        <p id="auth-error" class="form-error" role="alert" hidden></p><p id="auth-success" class="form-success" role="status" hidden></p>
+        <button class="button primary auth-submit" type="submit"><span>{{ 'Create facility' if onboarding else 'Sign in' }}</span><svg class="icon" aria-hidden="true"><use href="/static/icons.svg#arrow"></use></svg></button>
+      </form>
+      <div class="auth-bottom"><svg class="icon" aria-hidden="true"><use href="/static/icons.svg#shield"></use></svg><span>{{ 'Signed in as ' + user.name if onboarding else 'Your facility’s information stays with your facility.' }}</span></div>
+      {% if not configured %}<p class="config-note">This is a local draft. Live sign-in needs Supabase configuration; the demo is ready to explore.</p>{% endif %}
+    </div></section>
+  </main>
+</body></html>

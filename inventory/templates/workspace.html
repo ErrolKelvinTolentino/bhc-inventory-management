@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f7">
+  <meta name="description" content="A considered workspace for your facility's medicines, supplies, and stock history.">
+  <title>Overview · Inventory</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+{% macro icon(name) -%}<svg class="icon" aria-hidden="true"><use href="/static/icons.svg#{{ name }}"></use></svg>{%- endmacro %}
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <div class="sidebar-scrim" id="sidebar-scrim"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <a href="/" class="wordmark" data-nav="overview"><span class="brand-mark"><span></span></span><span>Inventory<span class="wordmark-caption">A little more clarity.</span></span></a>
+    <button class="facility-selector" id="facility-selector" aria-label="Choose facility" aria-expanded="false">{{ icon('building') }}<span><small>YOUR WORKSPACE</small><strong id="facility-name">{{ state.facility.name }}</strong></span>{{ icon('down') }}</button>
+    <div class="workspace-menu" id="workspace-menu" hidden></div>
+    <span class="nav-label">Workspace</span>
+    <nav class="nav-group">
+      <a href="/" data-nav="overview">{{ icon('overview') }}<span>Overview</span></a>
+      <a href="/inventory?type=medicine" data-nav="medicine">{{ icon('pill') }}<span>Medicines</span><small id="medicine-count"></small></a>
+      <a href="/inventory?type=supply" data-nav="supply">{{ icon('box') }}<span>Medical supplies</span><small id="supply-count"></small></a>
+      <a href="/movements" data-nav="movements">{{ icon('arrows') }}<span>Stock movements</span></a>
+      <a href="/expiry" data-nav="expiry">{{ icon('clock') }}<span>Expiry watch</span><small class="nav-badge" id="expiry-count"></small></a>
+    </nav>
+    <div class="sidebar-rule"></div>
+    <span class="nav-label">Manage</span>
+    <nav class="nav-group">
+      <a href="/categories" data-nav="categories">{{ icon('categories') }}<span>Categories</span></a>
+      <a href="/team" data-nav="team">{{ icon('team') }}<span>Team members</span></a>
+      <a href="/settings" data-nav="settings">{{ icon('settings') }}<span>Facility settings</span></a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="preview-note" id="preview-note"><span class="preview-dot"></span><strong>Demo workspace</strong><p>Explore freely. Your live inventory stays separate.</p><a href="/login">Open your facility {{ icon('arrow') }}</a></div>
+      <button class="profile-button" id="profile-button" aria-label="Open account settings"><span class="avatar" id="user-avatar">AM</span><span><strong id="user-name">{{ state.user.name }}</strong><small id="user-role">Administrator</small></span>{{ icon('more') }}</button>
+    </div>
+  </aside>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-left"><button class="icon-button mobile-menu" id="mobile-menu" aria-label="Open navigation" aria-expanded="false">{{ icon('menu') }}</button><span class="breadcrumb"><span class="breadcrumb-root">Workspace</span> {{ icon('chevron') }} <strong id="breadcrumb-title">Overview</strong></span><span class="mode-chip" id="mode-chip" {% if state.mode != 'demo' %}hidden{% endif %}>Demo</span></div>
+      <div class="topbar-actions"><button class="search-trigger" id="search-trigger" aria-label="Search all inventory">{{ icon('search') }}<span>Find an item...</span><kbd>⌘ K</kbd></button><span class="topbar-divider"></span><button class="icon-button notification-button" data-action="alerts" aria-label="View items needing attention">{{ icon('bell') }}<span></span></button><span class="avatar small-avatar" id="topbar-avatar">AM</span></div>
+    </header>
+    <main id="content" class="content" tabindex="-1"><div class="initial-loading">Opening your workspace<span></span></div></main>
+    <footer class="app-footer"><span><span class="sync-dot"></span><span id="sync-label">Sample inventory</span></span><span>Thoughtfully organized. Ready for the day.</span></footer>
+  </div>
+  <dialog id="form-dialog" class="form-dialog"><div id="form-dialog-content"></div></dialog>
+  <dialog id="detail-dialog" class="detail-dialog"><div id="detail-dialog-content"></div></dialog>
+  <dialog id="search-dialog" class="search-dialog"><div class="command-search">{{ icon('search') }}<input id="command-input" placeholder="Search medicines and supplies" aria-label="Search all inventory" autocomplete="off"><button class="key-button" data-close="search-dialog">esc</button></div><div id="command-results" class="command-results"></div><div class="command-footer">Search by item name, code, category, or strength.</div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <noscript><p class="noscript">Enable JavaScript to use this inventory workspace.</p></noscript>
+  <script id="initial-state" type="application/json">{{ state | tojson }}</script>
+</body>
+</html>
