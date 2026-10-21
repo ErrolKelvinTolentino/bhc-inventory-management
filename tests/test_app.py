@@ -14,6 +14,9 @@ def app(tmp_path):
 
 def workspace(client):
     response = client.get("/api/state")
+    if response.status_code == 401:
+        client.get("/demo")
+        response = client.get("/api/state")
     assert response.status_code == 200
     return response.get_json()
 
@@ -29,7 +32,11 @@ def stock_payload(item, kind, quantity, **kwargs):
 
 def test_workspace_routes_and_private_cookie(app):
     client = app.test_client()
-    for path in ("/", "/inventory", "/movements", "/expiry", "/categories", "/team", "/settings", "/login"):
+    assert client.get("/").status_code == 302
+    assert client.get("/").headers["Location"] == "/login"
+    assert client.get("/api/state").status_code == 401
+    client.get("/demo")
+    for path in ("/", "/inventory", "/movements", "/expiry", "/categories", "/settings", "/login"):
         response = client.get(path)
         assert response.status_code == 200
         assert response.headers["Cache-Control"] == "no-store"
@@ -147,20 +154,14 @@ def test_catalog_validation_and_snapshot_history(app):
     assert mutate(client, state, "item", {**payload, "id": None}).status_code == 400
 
 
-def test_staff_permissions_in_preview(app):
+def test_administrator_only_workspace(app):
     client = app.test_client()
     state = workspace(client)
-    with client.session_transaction() as browser_session:
-        sid = browser_session["sid"]
-    store = app.extensions["session_store"]
-    saved = store.read(sid)
-    saved["demo"]["user"]["role"] = "staff"
-    store.write(sid, saved)
-    assert mutate(client, state, "settings", {"name": "No", "timezone": "UTC", "near_expiry_days": 30}).status_code == 403
-    item = state["items"][0]
-    batch = next(b for b in state["batches"] if b["item_id"] == item["id"])
-    assert mutate(client, state, "stock", stock_payload(item, "adjustment", 1, p_batch_id=batch["id"], p_reason="No")).status_code == 403
-    assert mutate(client, state, "stock", stock_payload(item, "issue", 1)).status_code == 200
+    assert state["user"]["role"] == "admin"
+    assert all(member["role"] == "admin" for member in state["members"])
+    assert client.get("/team").status_code == 404
+    assert b'Team members' not in client.get("/").data
+    assert mutate(client, state, "member", {"user_id":"unused", "role":"staff"}).status_code == 400
 
 
 def test_no_silent_demo_fallback_when_live_auth_is_missing(app):
@@ -172,7 +173,7 @@ def test_no_silent_demo_fallback_when_live_auth_is_missing(app):
     saved = store.read(sid)
     saved["mode"] = "live"
     store.write(sid, saved)
-    assert client.get("/api/state").status_code == 403
+    assert client.get("/api/state").status_code == 401
     assert client.get("/demo").status_code == 302
     assert workspace(client)["mode"] == "demo"
 

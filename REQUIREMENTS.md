@@ -1,6 +1,6 @@
 # Facility Inventory Management — Requirements Draft
 
-Status: requirements draft. Initial database schema deployed; see database/README.md. Local Flask MVP draft implemented; see README.md for its scope and remaining work.
+Status: local Flask/Supabase MVP integrated and live-tested, including login/logout, facility onboarding, inventory, role isolation, history, password recovery/change, and repeatable sample data. See README.md for test evidence and remaining work. Vercel configuration and shared sessions are prepared; the app is not deployed yet. The current confirmed access model is administrators only, with no staff accounts or team-management interface.
 
 ## 1. Confirmed requirements and source boundaries
 
@@ -15,7 +15,7 @@ Status: requirements draft. Initial database schema deployed; see database/READM
 
 ## 2. Product scope
 
-A web application where each registered facility manages its own medicines, consumable medical supplies, staff, and stock history. Facility names appear in the workspace header, dashboard, and settings.
+A web application where each registered facility manages its own medicines, consumable medical supplies, administrators, and stock history. Facility names appear in the workspace header, dashboard, and settings.
 
 Proposed version 1 boundary: one stock location per facility, internet required, and no patient records. Multiple facilities are supported from the start; branches and transfers between facilities are deferred.
 
@@ -37,40 +37,31 @@ Flask renders pages and owns the application workflows. Ordinary data requests r
 
 Stock mutation workflows call a restricted Postgres function to validate and commit balances and movement records together. This small SQL layer complements the Python backend.
 
-Deploy the Python web application to a Python-capable runtime, with Supabase supplying the database and authentication. Hosting target and budget are undecided.
+The requested hosting target is Vercel, with Supabase supplying the database and authentication. The shared Supabase session store and Vercel configuration are implemented; hosted deployment is the next phase.
 
 ## 4. Facility onboarding and access
 
 ### Facility registration
 
-Proposed flow: create account -> verify email -> register facility name -> become facility administrator -> open empty dashboard -> add inventory and staff.
+Proposed flow: create account -> verify email -> register facility name -> become facility administrator -> open empty dashboard -> add inventory.
 
 - A facility uses an internal unique ID; its display name is not an access credential.
 - Facility creation and the creator's administrator membership succeed together or roll back together.
 - A newly created workspace starts with no other facility's data.
 - A facility administrator can update the displayed facility name.
 - Joining an existing facility requires authorization from that facility; knowing its name is insufficient.
-- The initial administrator is the facility creator. Staff onboarding is an open decision.
+- The initial administrator is the facility creator. Staff access is excluded from this version.
 
-### Proposed roles
+### Confirmed access model
 
-| Capability | Facility administrator | Staff |
-| --- | --- | --- |
-| View own facility dashboard and inventory | Yes | Yes |
-| Record receipts and issues | Yes | Yes |
-| View transaction history | Yes | Yes |
-| Manage item catalog and categories | Yes | No |
-| Post adjustments and disposal | Yes | No |
-| Archive items | Yes | No |
-| Manage staff, roles, facility name, settings | Yes | No |
-| Change own password | Yes | Yes |
-
-- Include login, logout, change password, and password recovery.
-- Membership removal blocks future facility access even if the account is still signed in.
-- A user cannot promote themselves or choose an arbitrary facility role during signup.
-- Prevent removal or demotion of the last active administrator.
-- Model memberships separately from accounts; whether users can belong to several facilities in version 1 is undecided.
-- A platform-wide administration console is outside the proposed first version.
+- Facility administrators are the only supported role. Each facility remains isolated.
+- Administrators manage inventory, stock movements, corrections, history, categories, and settings.
+- Include login, logout, change password, password recovery, and email verification.
+- Remove staff accounts and the team-management interface. The database rejects staff roles.
+- Preserve original attribution for historical records created before staff access was removed.
+- Facility creators become administrators atomically during registration; users cannot choose another facility during signup.
+- Memberships remain separate from accounts. Multiple authorized administrator memberships and the facility switcher are supported.
+- A platform-wide administration console is outside the first version.
 
 ## 5. Functional requirements
 
@@ -143,7 +134,7 @@ Proposed unit rule: one base unit per item with positive whole-number movement q
 | Supabase Auth users | Identity and credentials |
 | profiles | Account display information |
 | facilities | Facility name, timezone, near-expiry settings |
-| facility_memberships | Account-to-facility role and active status |
+| facility_memberships | Administrator-to-facility access and active status |
 | categories | Facility-owned medicine/supply categories |
 | items | Facility-owned medicine and supply catalog |
 | inventory_batches | Lot, expiry, item, and current physical balance |
@@ -151,7 +142,7 @@ Proposed unit rule: one base unit per item with positive whole-number movement q
 | stock_transaction_lines | Batch-level signed changes, linked to a transaction |
 | audit_events | Facility settings, membership, and catalog change history |
 
-Staff invitations need an additional invitation model if invite-based onboarding is selected. Keep catalog records facility-owned in version 1 rather than maintaining a shared editable global medicine catalog.
+Keep catalog records facility-owned in version 1 rather than maintaining a shared editable global medicine catalog.
 
 ## 9. Proposed pages
 
@@ -166,7 +157,7 @@ Staff invitations need an additional invitation model if invite-based onboarding
 9. Transaction history and transaction details.
 10. Expired and near-expiry stock.
 11. Category management.
-12. Staff management and facility settings.
+12. Facility settings.
 
 ## 10. Acceptance examples
 
@@ -178,14 +169,14 @@ Staff invitations need an additional invitation model if invite-based onboarding
 - One batch contains 20 usable units and another contains 15 expired units: usable stock is 20, expired stock is 15, physical stock is 35, and the expired batch cannot be issued.
 - Disposing of those 15 expired units leaves physical stock at 20 and retains a disposal record.
 - Counting 18 units where a batch shows 20 creates an administrator-authorized adjustment of -2 with its reason.
-- Staff cannot change roles, alter another facility's settings, or post administrator-only adjustments.
+- Only facility administrators can access their own workspace; another facility remains inaccessible.
 - Removing a membership prevents further access to that facility without deleting historical transaction attribution.
 - Changing a facility name changes only that facility's displayed name.
 - Search and combined category/stock/expiry filters return only records from the current facility.
 
 ## 11. Delivery sequence
 
-1. Resolve open scope questions and agree on roles, stock units, and expiry rules.
+1. Resolve open scope questions and agree on administrator-only access, stock units, and expiry rules.
 2. Create schema migrations, facility constraints, RLS policies, and automated facility-isolation checks.
 3. Implement authentication, facility onboarding, and membership authorization.
 4. Implement medicine/supply catalogs, categories, and batches.
@@ -197,12 +188,9 @@ Staff invitations need an additional invitation model if invite-based onboarding
 
 Open decisions:
 
-- Staff onboarding: administrator invitation/creation, registration with approval, or another policy.
 - Intended use: school/demo, daily operation, or demo followed by real use.
-- Whether an account may join multiple facilities and needs a workspace switcher in version 1.
-- Confirm proposed administrator/staff permissions and whether a read-only role is needed.
 - Confirm base-unit restrictions, near-expiry window, facility timezone, and exact expiry-date interpretation.
-- Hosting target, expected number of facilities/items/users, and operating budget.
+- Expected number of facilities/items/users and operating budget. Vercel is the requested hosting target for the next phase.
 
 Deferred unless requested: logos, per-facility colors, custom domains, billing/subscriptions, cross-facility stock transfers, multiple warehouses per facility, patient records, prescriptions, purchase orders, barcode scanning, offline synchronization, scheduled email/SMS alerts, advanced reports, CSV/PDF exports, bulk imports, and equipment asset tracking.
 

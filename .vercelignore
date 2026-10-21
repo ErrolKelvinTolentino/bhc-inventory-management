@@ -1,0 +1,14 @@
+.venv
+.env*
+.git
+.pytest_cache
+__pycache__
+**/__pycache__
+instance
+artifacts
+tests
+database
+supabase
+requirements-dev.txt
+requirements-lock.txt
+*.log

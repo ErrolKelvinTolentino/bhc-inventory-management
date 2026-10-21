@@ -1,8 +1,10 @@
 # Facility Inventory
 
-A working local MVP draft built with **Python / Flask, HTML, CSS, JavaScript, and
-Supabase**. The initial database is already deployed to BHC Inventory. This change
-adds the application and interface; it does not publish a hosted website.
+A working local MVP built with **Python / Flask, HTML, CSS, JavaScript, and
+Supabase**. Authentication, facility onboarding, catalogs, stock workflows, and
+history connect to the deployed BHC Inventory database. Vercel runtime
+configuration and shared sessions are prepared; see
+[DEPLOYMENT.md](DEPLOYMENT.md). The app has not been deployed to Vercel.
 
 ## Run locally
 
@@ -12,16 +14,17 @@ python -m venv .venv
 .venv\Scripts\python.exe app.py
 ```
 
-Open **http://127.0.0.1:5000**. The initial screen is a clearly labeled, interactive
-demo workspace. There is no need to create an account to review the draft.
+Open **http://127.0.0.1:5000** to sign in. A verified account without a facility is
+guided through facility registration. `/demo` opens an isolated, interactive
+preview without an account.
 
 For a fresh checkout, copy `.env.example` to `.env` and add the project's public
 Supabase publishable/anon key to enable live sign-in. The current machine's ignored
-`.env` has already been configured with the public key. No administrative key is
-used by the application. `requirements-lock.txt` records the exact installed
+`.env` has already been configured with the public key. Local SQLite mode needs
+no administrative key; shared sessions use a server-only Supabase secret. `requirements-lock.txt` records the exact installed
 versions, including developer test tools.
 
-## What is in the draft
+## What works
 
 - Overview with actionable stock alerts, expiry reminders, a movement chart, and
   an inventory snapshot. Charts count movements, not a sum of unrelated stock units.
@@ -34,19 +37,48 @@ versions, including developer test tools.
 - Searchable/filterable stock history with original actor/item snapshots and
   per-batch before/after balances. Administrative activity is a separate view.
 - Expiry watch with near-expiry/expired filters.
-- Category creation, team access management for existing accounts, and facility
-  name/timezone/expiry-window settings.
+- Category creation and facility name/timezone/expiry-window settings.
 - Global inventory search, keyboard shortcuts, native modal focus handling,
   responsive navigation, and compact phone inventory/history lists.
-- Sign-in, account registration, email-verification messaging, and facility
+- Sign-in/logout, registration, email verification and resend, password recovery,
+  signed-in password changes with current-password verification, and facility
   onboarding through Supabase Auth and the deployed database functions.
+
+## Sample facility and accounts
+
+The connected project has a separate **Sample Health Center (Seed)** with
+19 items, 10 categories, and 31 initial stock transactions. The sample
+administrator uses `admin@seed.bhc-inventory.test`. Its generated
+password is in the ignored `instance/seed-credentials.json`. It is a confirmed
+test account and cannot receive email. The former sample staff login has been
+removed; historical stock entries remain attributed to their original actors.
+
+```powershell
+.venv\Scripts\python.exe scripts/seed_supabase.py --use-cli
+```
+
+This uses the logged-in Supabase CLI to obtain an administrative key in memory
+for test-account creation only. All inventory writes use the sample
+administrator's normal JWT and database RPCs. Inventory requests use the public
+key and user JWTs; shared session storage uses a server-only secret. The script
+reuses accounts, category/item codes, and deterministic
+stock-operation keys; rerunning it does not duplicate the initial inventory.
+Keep the ignored credential file to retain the generated passwords and seed date.
+Existing sample edits are preserved; this command is not a reset.
+
+The live verification script also creates an empty **Integration Check Facility
+(Seed)** and an `onboarding@seed.bhc-inventory.test` account to test onboarding,
+facility isolation, and password changes. Its generated credentials are stored in
+the same ignored file. The sample movement history contains four clearly marked
+`LIVE-CHECK` entries with zero combined effect on stock.
 
 ## Demo versus live inventory
 
 The demo is a **separate, session-scoped sample**. Its changes are persisted in
-the local, ignored `instance/sessions.sqlite3` file and expire after 24 hours of
-inactivity. Another browser session gets its own preview. No sample facilities,
-accounts, or inventory are created in Supabase.
+the configured session backend (ignored SQLite locally, encrypted Supabase
+sessions on Vercel) and expire after 24 hours of inactivity. Another browser session gets its own preview. Using `/demo` never
+creates facilities, accounts, or inventory in Supabase. The live seed script is a
+separate, explicit operation.
 
 Use **Open your facility** or `/login` to sign in to a real account. A verified
 account without a facility is guided through facility registration. Users with
@@ -54,15 +86,27 @@ several memberships can select a facility from the sidebar. Live data is loaded
 through each user's own JWT, and all stock changes use the authorized database
 RPCs. A failed live request never silently falls back to demo data.
 
-Team management currently adds an **existing account by its account ID**. The
-person can find their ID in the account menu. Email invitations remain a separate
-onboarding decision. In the preview, team members are sample records and cannot
-be invited or have their permissions changed.
+The application supports facility administrators only. Team/staff-management
+screens and actions have been removed, and the database rejects staff roles.
 
-Configure Supabase Auth's Site URL and allowed redirect URLs for the intended
-application origin before real onboarding. This task did not change remote Auth
-settings or send verification emails. Real account registration is available for
-the user to exercise; it was not tested by creating unsolicited accounts.
+Email links are bound to the requesting browser and expire after one hour. Open
+the verification/reset link in that browser. Tokens return in the URL fragment,
+which the callback page clears before submitting them over the local same-origin
+API. Tokens are verified by Supabase and kept in the server-side session.
+
+Local callback URLs for `localhost` and `127.0.0.1`, ports 5000 and 5001, are already
+allowed in this Supabase project. Other Auth settings were preserved. To prepare a
+future HTTPS origin, inspect the dry run first, then apply it:
+
+```powershell
+.venv\Scripts\python.exe scripts/configure_auth.py --origin https://your-app.example
+.venv\Scripts\python.exe scripts/configure_auth.py --origin https://your-app.example --apply
+```
+
+Set `APP_URL` to that canonical origin in deployment. Registration, verification
+resend, and recovery send email only when requested through their forms. Live
+verification generated a test recovery link without sending email; inbox delivery
+with a real address still needs checking before public onboarding.
 
 ## Design direction
 
@@ -75,20 +119,40 @@ image services. The sign-in illustration is built in CSS.
 ## Verification
 
 ```powershell
-.venv\Scripts\python.exe -m pytest -q
+.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider --basetemp=instance/pytest-run
 node --check inventory/static/app.js
 node --check inventory/static/auth.js
+node --check inventory/static/callback.js
+node --check inventory/static/password.js
 ```
 
-The Python integration tests cover isolated sessions, CSRF/origin validation,
+The 36 offline Python tests cover isolated sessions, CSRF/origin validation,
 stock changes and retry behavior, rollback, expired-stock protection, disposal,
-archival, activity history, staff permissions, and no silent live/demo fallback.
+archival, activity history, administrator-only access, session rotation/invalidation,
+browser-bound email callbacks, expired authentication, password validation, and
+closed SQLite handles. On Windows, use a fresh `--basetemp` path if a previous
+test directory has restrictive permissions.
 
-Browser checks cover desktop and phone breakpoints, receiving and issuing sample
-stock, history filtering, item drawers, navigation, and account screens. The live
-Supabase Auth endpoint was checked for connectivity without creating users or
-inventory. Full live account-to-facility integration and concurrent production
-sessions still require environment-level testing.
+Run the live checks after seeding (requires the connected test project):
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_live.py --use-cli
+```
+
+The latest shared-session run passed 67 live checks. They exercise actual Supabase authentication, inventory reads,
+receipts/issues and duplicate retries, rollback, catalog edits/archival,
+facility isolation, recovery redirects and token callbacks, both password-change
+paths, and logout with cookie-replay rejection. Add `--shared-sessions` to verify
+cross-instance sessions, concurrent session updates, encrypted stored payloads,
+and session RPC isolation. First-time onboarding was verified on the initial run.
+Checks leave stock quantities unchanged and preserve annotated audit/history
+entries. Only the generated QA account's password changes, and its local
+credential record is updated automatically.
+
+The draft's browser checks covered desktop and phone layouts, stock forms,
+history filtering, item drawers, and navigation. Live browser verification also
+confirmed administrator sign-in, live inventory/history, account controls, and
+sign-out returning to the login page.
 
 Database migration and deployment checks are described in `database/README.md`.
 
@@ -97,26 +161,31 @@ Database migration and deployment checks are described in `database/README.md`.
 ```text
 app.py                    Flask entry point
 inventory/__init__.py     Routes, validation, CSRF, server-side session storage
+inventory/auth.py         Account flows, email callbacks, session rotation
+inventory/shared_sessions.py  Encrypted, leased serverless session storage
 inventory/services.py     Per-request Supabase clients and live data queries
 inventory/demo.py         Isolated sample stock and its consistent movement ledger
 inventory/templates/     Workspace and sign-in/onboarding layouts
 inventory/static/        Interface styling, interactions, icons
 tests/                    Python application integration tests
+scripts/                  Repeatable seeding, Auth URL configuration, live checks
 database/                 Standalone database baseline, notes, verification
 supabase/migrations/      Applied database migration history
 ```
 
-## Before operational deployment
+## Deployment status
 
-This draft uses Flask's local development server and a small SQLite-backed session
-store designed for a single local application process. Supabase tokens stay on
-the server; browser cookies contain only a signed opaque session ID. CSRF checks,
-same-site/HTTP-only cookies, a restrictive content security policy, and RLS are
-already in place.
+[Vercel preparation and required environment variables](DEPLOYMENT.md) are
+included. Shared sessions are available through `SESSION_BACKEND=supabase`; local
+development defaults to SQLite. Vercel enforces shared sessions, explicit secrets,
+secure cookies, and a canonical HTTPS origin. No session tokens reach browser
+cookies or localStorage. Auth and inventory reads keep the user's RLS context.
 
-For deployment, use a production Python runtime, HTTPS with `COOKIE_SECURE=1`, a
-managed persistent session store, and an explicit `SECRET_KEY`. Finish password
-recovery/change screens, confirm staff invitation behavior, and validate the full
-live Auth/RLS workflow. The stock history draft loads the latest 200 transactions
-and latest 100 activity events; older records remain in the database. Complete
-server-side history pagination/search before using this as a long-term clinic log.
+The shared-session and administrator-only database migrations have been applied.
+The remaining deployment steps are creating/importing the Vercel project, setting
+its environment variables and actual callback domain, and verifying the hosted
+app and real email delivery. Nothing has been published yet.
+
+The stock history currently loads the latest 200 transactions and latest 100
+activity events; older records remain in the database. Complete server-side
+history pagination/search before using this as a long-term clinic log.

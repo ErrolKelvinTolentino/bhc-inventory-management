@@ -5,6 +5,12 @@ indexes, constraints, policies, triggers, read views, and authorized write funct
 for the facility inventory application. It does not create a Supabase project,
 change Auth settings, insert sample facilities, or deploy the Python application.
 
+The 2026-10-21 incremental migrations make access **administrator-only** and add
+private encrypted server sessions for Vercel. The historical baseline below is
+unchanged; apply all files under `supabase/migrations/` to a fresh project. The
+sample staff login was removed while keeping its historical attribution. See
+[DEPLOYMENT.md](../DEPLOYMENT.md) for deployment configuration.
+
 ## Deployment and future updates
 
 The initial schema was applied on **2026-10-19** to **BHC Inventory**
@@ -59,7 +65,7 @@ baseline in migration history before adopting CLI deployment later.
 | --- | --- |
 | `profiles` | Display names associated with Supabase Auth identities; no credentials |
 | `facilities` | Registered facility name, timezone, and near-expiry window |
-| `facility_memberships` | Active/inactive facility membership and `admin`/`staff` role |
+| `facility_memberships` | Active/inactive administrator access (`admin` only after the incremental migration) |
 | `categories` | Facility-owned medicine or supply categories |
 | `items` | Medicine and supply catalog, base units, thresholds, and archival status |
 | `inventory_batches` | Item lot, exact expiry date, and physical quantity on hand |
@@ -113,10 +119,10 @@ complete desired record, since omitted optional fields reset to their defaults.
 Medicine expiry tracking is always required. Stock unit and item type cannot
 change once transactions exist.
 
-Staff onboarding is not finalized. The database supports administrators adding
-an **existing** account by UUID; it does not provide public membership signup,
-email lookup, invitation delivery, or automatic joining by facility name.
-Disable memberships with `p_is_active = false` rather than deleting them.
+The application has no staff/team-management interface. The retained
+`set_facility_member` RPC now accepts only administrator roles and still protects
+the last active administrator. The historical initial migration contains the old
+role definition; the applied administrators-only migration supersedes it.
 The last active administrator cannot be demoted or disabled. Historical profile
 references deliberately restrict deleting Auth users; deactivate access instead.
 
@@ -127,8 +133,8 @@ Required parameters: `p_facility_id`, `p_item_id`, `p_transaction_type`,
 
 | Type | Quantity meaning | Batch parameters | Permission |
 | --- | --- | --- | --- |
-| `receipt` | Positive units received | Existing `p_batch_id`, OR `p_batch_number` plus `p_expiry_date` when required | Admin/staff |
-| `issue` | Positive units issued | Optional `p_batch_id`; omit for automatic FEFO allocation | Admin/staff |
+| `receipt` | Positive units received | Existing `p_batch_id`, OR `p_batch_number` plus `p_expiry_date` when required | Admin |
+| `issue` | Positive units issued | Optional `p_batch_id`; omit for automatic FEFO allocation | Admin |
 | `adjustment` | New absolute counted balance, including zero | Required `p_batch_id` and `p_reason` | Admin |
 | `disposal` | Positive units physically removed | Required `p_batch_id` and `p_reason` | Admin |
 

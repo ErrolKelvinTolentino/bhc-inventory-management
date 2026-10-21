@@ -42,8 +42,6 @@ def seed(today):
         "user": {"id": uid("ana"), "name": "Ana Mendoza", "role": "admin", "email": "ana@example.test"},
         "members": [
             {"user_id": uid("ana"), "name": "Ana Mendoza", "role": "admin", "is_active": True},
-            {"user_id": uid("rafael"), "name": "Rafael Santos", "role": "staff", "is_active": True},
-            {"user_id": uid("mariel"), "name": "Mariel Cruz", "role": "staff", "is_active": True},
         ],
         "categories": [{"id": uid(n), "name": n, "item_type": t} for n, t in categories],
         "items": [], "batches": [], "transactions": [], "audit_events": [],
