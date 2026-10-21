@@ -1,6 +1,6 @@
 # Facility Inventory Management — Requirements Draft
 
-Status: local Flask/Supabase MVP integrated and live-tested, including login/logout, facility onboarding, inventory, role isolation, history, password recovery/change, and repeatable sample data. See README.md for test evidence and remaining work. Vercel configuration and shared sessions are prepared; the app is not deployed yet. The current confirmed access model is administrators only, with no staff accounts or team-management interface.
+Status: Flask/Supabase MVP deployed at https://bhc-inventory.vercel.app with encrypted shared sessions. Login/logout, live seed inventory/history, facility isolation, page navigation, and assets passed 53 hosted checks. Account recovery/change and stock workflows also passed the live integration checks. See README.md and DEPLOYMENT.md for evidence and remaining work. The confirmed access model is administrators only, with no staff accounts or team-management interface.
 
 ## 1. Confirmed requirements and source boundaries
 
@@ -37,7 +37,7 @@ Flask renders pages and owns the application workflows. Ordinary data requests r
 
 Stock mutation workflows call a restricted Postgres function to validate and commit balances and movement records together. This small SQL layer complements the Python backend.
 
-The requested hosting target is Vercel, with Supabase supplying the database and authentication. The shared Supabase session store and Vercel configuration are implemented; hosted deployment is the next phase.
+The application runs on Vercel, with Supabase supplying the database, authentication, and encrypted shared server sessions. GitHub pushes to `main` trigger production deployment.
 
 ## 4. Facility onboarding and access
 

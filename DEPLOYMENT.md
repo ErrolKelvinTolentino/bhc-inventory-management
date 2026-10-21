@@ -1,6 +1,15 @@
-# Vercel deployment preparation
+# Vercel production deployment
 
-The repository is prepared for Vercel's Flask runtime. It has **not been deployed**.
+The app is deployed at **[bhc-inventory.vercel.app](https://bhc-inventory.vercel.app)**
+as of 2026-10-21. Project: `inaagapay/bhc-inventory`, connected to
+`ErrolKelvinTolentino/bhc-inventory-management`, production branch `main`.
+Pushing to `main` triggers production deployment automatically.
+
+The hosted app passed **53 production checks**, including sign-in/logout,
+encrypted shared sessions, live seed inventory/history, facility isolation,
+all workspace pages, and CDN assets. The checks do not modify inventory or send
+email. Browser sign-in and the live dashboard were also verified.
+
 The `app` in root `app.py` is the entry point; Python 3.12 is specified in
 `.python-version`. `vercel.json` selects Flask and a 60-second request limit.
 The build command copies CSS, JavaScript, and icons into `public/static` for
@@ -16,7 +25,7 @@ leave Install Command and Output Directory at their defaults, and use the build
 command committed in `vercel.json`. No database migration or seeding runs during
 build or application startup.
 
-Set the following in Vercel's **Production** environment before deploying:
+The following are configured in Vercel's **Production** environment:
 
 | Variable | Value |
 | --- | --- |
@@ -25,7 +34,7 @@ Set the following in Vercel's **Production** environment before deploying:
 | `SUPABASE_SECRET_KEY` | Project secret key or legacy service-role key; mark Sensitive and keep server-only |
 | `SECRET_KEY` | A new cryptographically random value of at least 32 characters; mark Sensitive |
 | `SESSION_BACKEND` | `supabase` |
-| `APP_URL` | Canonical HTTPS application origin, for example `https://your-project.vercel.app`, without a path |
+| `APP_URL` | `https://bhc-inventory.vercel.app` |
 | `COOKIE_SECURE` | `1` (also enforced automatically on Vercel) |
 | `APP_TIMEZONE` | `Asia/Manila` |
 
@@ -68,15 +77,19 @@ never falls back to another session backend.
 
 ## Configure the actual domain when known
 
-Replace the example origin with the chosen production domain:
+Supabase Auth's Site URL is `https://bhc-inventory.vercel.app`, and its
+`/auth/callback/**` URL is allowed alongside the existing local callbacks. Email
+verification settings and other unrelated Auth configuration were preserved.
+
+For a future domain change, replace the origin below and update Vercel's `APP_URL`:
 
 ```powershell
-.venv\Scripts\python.exe scripts/configure_auth.py --origin https://your-project.vercel.app
-.venv\Scripts\python.exe scripts/configure_auth.py --origin https://your-project.vercel.app --apply
+.venv\Scripts\python.exe scripts/configure_auth.py --origin https://your-project.vercel.app --set-site-url
+.venv\Scripts\python.exe scripts/configure_auth.py --origin https://your-project.vercel.app --set-site-url --apply
 ```
 
-Set Supabase Auth's Site URL to the same origin, and set Vercel's `APP_URL`
-accordingly. The script preserves existing callback URLs and other Auth settings.
+The flag sets Supabase Auth's Site URL to the same origin. The script preserves
+existing callback URLs and unrelated Auth settings.
 Use the canonical domain for login and email links; browser-bound callbacks must
 return to the browser and origin that requested them. Do not use wildcard Vercel
 preview domains with production authentication.
@@ -87,6 +100,7 @@ preview domains with production authentication.
 .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider --basetemp=instance/pytest-deployment
 .venv\Scripts\python.exe scripts/build_vercel.py
 .venv\Scripts\python.exe scripts/verify_live.py --use-cli --shared-sessions
+.venv\Scripts\python.exe scripts/verify_deployed.py
 npx.cmd --yes supabase db query --linked --file database/tests/verify_serverless.sql
 ```
 
@@ -96,7 +110,12 @@ administrator inventory workflows, facility isolation, password flows, and
 logout. It uses labeled sample accounts, leaves inventory quantities unchanged,
 and updates only the generated QA password in ignored local credentials.
 
-After deployment, check `/health`, sign in, refresh/navigate between pages,
-record a sample receipt/issue pair, and sign out. Verify real inbox delivery for
-registration/recovery from the production domain. This last hosted check and
-domain configuration remain until the Vercel project is created.
+Production `/health`, sign-in, page navigation, sessions, inventory/history, and
+sign-out have passed. Real inbox delivery for registration/recovery still needs
+checking with a real email address; no unsolicited emails were sent during setup.
+
+For subsequent releases, push code changes to `main`, wait for the deployment to
+be Ready in Vercel, and run `scripts/verify_deployed.py`. `scripts/configure_vercel.py`
+can add missing variables to this linked project; it preserves existing values
+and never prints secrets. The Vercel CLI link in `.vercel/` remains local and
+ignored by Git.

@@ -2,9 +2,9 @@
 
 A working local MVP built with **Python / Flask, HTML, CSS, JavaScript, and
 Supabase**. Authentication, facility onboarding, catalogs, stock workflows, and
-history connect to the deployed BHC Inventory database. Vercel runtime
-configuration and shared sessions are prepared; see
-[DEPLOYMENT.md](DEPLOYMENT.md). The app has not been deployed to Vercel.
+history connect to the deployed BHC Inventory database.
+**Live app: [bhc-inventory.vercel.app](https://bhc-inventory.vercel.app)**.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for production configuration and verification.
 
 ## Run locally
 
@@ -181,10 +181,13 @@ development defaults to SQLite. Vercel enforces shared sessions, explicit secret
 secure cookies, and a canonical HTTPS origin. No session tokens reach browser
 cookies or localStorage. Auth and inventory reads keep the user's RLS context.
 
-The shared-session and administrator-only database migrations have been applied.
-The remaining deployment steps are creating/importing the Vercel project, setting
-its environment variables and actual callback domain, and verifying the hosted
-app and real email delivery. Nothing has been published yet.
+The shared-session and administrator-only migrations are applied. Vercel project
+`inaagapay/bhc-inventory` is connected to this GitHub repository's `main` branch;
+future pushes deploy automatically. Production secrets and the Supabase Auth
+Site URL/callbacks are configured. The hosted app passed 53 read-only checks for
+login/logout, secure sessions, live seed data/history, facility isolation, and
+assets. Run `.venv\Scripts\python.exe scripts/verify_deployed.py` to repeat them.
+Real inbox delivery remains to be checked with a real email address.
 
 The stock history currently loads the latest 200 transactions and latest 100
 activity events; older records remain in the database. Complete server-side
