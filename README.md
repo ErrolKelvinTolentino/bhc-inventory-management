@@ -6,6 +6,9 @@ history connect to the deployed BHC Inventory database.
 **Live app: [bhc-inventory.vercel.app](https://bhc-inventory.vercel.app)**.
 See [DEPLOYMENT.md](DEPLOYMENT.md) for production configuration and verification.
 
+New to the repository? Follow [GETTING_STARTED.md](GETTING_STARTED.md) for a fresh
+checkout, local configuration, account setup, and troubleshooting.
+
 ## Run locally
 
 ```powershell
